@@ -46,6 +46,7 @@ body, html {
     border-radius: 5px;
     overflow: hidden;
     position: relative;
+    touch-action: none; /* Отключаем стандартные сенсорные жесты браузера */
 }
 
 svg {
@@ -136,8 +137,8 @@ button {
 }
 
 .path {
-    stroke: #ce1414;
-    stroke-width: 5;
+    stroke: #444444;
+    stroke-width: 4;
     stroke-dasharray: 5;
 }
 
@@ -200,8 +201,4 @@ text {
 
 .zoom-btn:hover {
     background: linear-gradient(90deg, rgba(0,59,111,1) 0%, rgba(0,112,209,1));
-}
-
-.controls{
-    min-width: 450px;
 }

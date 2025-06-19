@@ -267,7 +267,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Zoom handling function
     function handleZoom(svg, scaleFactor, clientX, clientY) {
-        if (!svg || !svg._viewBox) return;
+        if (!svg || !svg._viewBox) {
+            console.error('handleZoom: svg or svg._viewBox is not initialized');
+            return;
+        }
 
         const MIN_ZOOM = 0.3;
         const MAX_ZOOM = 8;
@@ -280,6 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const newWidth = vw * scaleFactor;
         if (newWidth < originalWidth * MIN_ZOOM || newWidth > originalWidth * MAX_ZOOM) {
+            console.log(`Zoom rejected: newWidth=${newWidth}, min=${originalWidth * MIN_ZOOM}, max=${originalWidth * MAX_ZOOM}`);
             return;
         }
 
@@ -297,6 +301,7 @@ document.addEventListener("DOMContentLoaded", () => {
         svg._viewBox.h = newViewBoxHeight;
 
         svg.setAttribute("viewBox", `${svg._viewBox.x} ${svg._viewBox.y} ${svg._viewBox.w} ${svg._viewBox.h}`);
+        console.log(`Zoom applied: scaleFactor=${scaleFactor}, viewBox=${svg.getAttribute("viewBox")}`);
     }
 
     let currentFloorId = null;
@@ -436,6 +441,7 @@ document.addEventListener("DOMContentLoaded", () => {
             originalWidth: width,
             originalHeight: height
         };
+        console.log('centerSVG: viewBox initialized:', svg._viewBox);
     }
 
     function visualizePath(svg, path, currentFloor, delay = 500) {
@@ -472,7 +478,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function enablePanAndZoom(svg) {
-        const viewBox = svg.getAttribute("viewBox").split(" ").map(parseFloat);
+        if (!svg) {
+            console.error('enablePanAndZoom: SVG element is not provided');
+            return;
+        }
+
+        const viewBox = svg.getAttribute("viewBox")?.split(" ").map(parseFloat);
+        if (!viewBox || viewBox.length !== 4) {
+            console.error('enablePanAndZoom: Invalid viewBox', svg.getAttribute("viewBox"));
+            return;
+        }
+
         svg._viewBox = {
             x: viewBox[0],
             y: viewBox[1],
@@ -481,6 +497,7 @@ document.addEventListener("DOMContentLoaded", () => {
             originalWidth: viewBox[2],
             originalHeight: viewBox[3]
         };
+        console.log('enablePanAndZoom: viewBox initialized:', svg._viewBox);
 
         const MIN_ZOOM = 0.3;
         const MAX_ZOOM = 8.0;
@@ -489,43 +506,55 @@ document.addEventListener("DOMContentLoaded", () => {
         let startPoint = { x: 0, y: 0 };
         let isPinching = false;
         let initialDistance = 0;
-        let initialViewBox = null;
 
         // Mouse events
         svg.addEventListener('wheel', e => {
             e.preventDefault();
             const scaleFactor = e.deltaY < 0 ? 0.95 : 1.05;
+            console.log('Mouse wheel:', { deltaY: e.deltaY, scaleFactor });
             handleZoom(svg, scaleFactor, e.clientX, e.clientY);
+        }, { passive: false });
+
+        zoomInBtn.addEventListener("click", () => {
+            console.log('Zoom in button clicked');
+            handleZoom(svg, 0.95, svg.getBoundingClientRect().left + svg.getBoundingClientRect().width / 2, svg.getBoundingClientRect().top + svg.getBoundingClientRect().height / 2);
         });
 
-        zoomInBtn.addEventListener("click", () => handleZoom(svg, 0.95, svg.getBoundingClientRect().left + svg.getBoundingClientRect().width / 2, svg.getBoundingClientRect().top + svg.getBoundingClientRect().height / 2));
-        zoomOutBtn.addEventListener("click", () => handleZoom(svg, 1.05, svg.getBoundingClientRect().left + svg.getBoundingClientRect().width / 2, svg.getBoundingClientRect().top + svg.getBoundingClientRect().height / 2));
+        zoomOutBtn.addEventListener("click", () => {
+            console.log('Zoom out button clicked');
+            handleZoom(svg, 1.05, svg.getBoundingClientRect().left + svg.getBoundingClientRect().width / 2, svg.getBoundingClientRect().top + svg.getBoundingClientRect().height / 2);
+        });
 
         svg.addEventListener('mousedown', e => {
             e.preventDefault();
             isPanning = true;
             startPoint = { x: e.clientX, y: e.clientY };
-        });
+            console.log('Mouse down:', startPoint);
+        }, { passive: false });
 
         svg.addEventListener('mousemove', e => {
             if (!isPanning) return;
             e.preventDefault();
-            
             const dx = (e.clientX - startPoint.x) * (svg._viewBox.w / svg.clientWidth);
             const dy = (e.clientY - startPoint.y) * (svg._viewBox.h / svg.clientHeight);
+            console.log('Mouse move:', { dx, dy, clientX: e.clientX, clientY: e.clientY });
 
             svg._viewBox.x -= dx;
             svg._viewBox.y -= dy;
             
-            svg.setAttribute("viewBox", 
-                `${svg._viewBox.x} ${svg._viewBox.y} ${svg._viewBox.w} ${svg._viewBox.h}`
-            );
-            
+            svg.setAttribute("viewBox", `${svg._viewBox.x} ${svg._viewBox.y} ${svg._viewBox.w} ${svg._viewBox.h}`);
             startPoint = { x: e.clientX, y: e.clientY };
+        }, { passive: false });
+
+        svg.addEventListener('mouseup', () => {
+            isPanning = false;
+            console.log('Mouse up');
         });
 
-        svg.addEventListener('mouseup', () => isPanning = false);
-        svg.addEventListener('mouseleave', () => isPanning = false);
+        svg.addEventListener('mouseleave', () => {
+            isPanning = false;
+            console.log('Mouse leave');
+        });
 
         // Touch events
         function getTouchDistance(touches) {
@@ -536,7 +565,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         function getTouchCenter(touches) {
-            if (touches.length < 2) {
+            if (touches.length === 1) {
                 return { x: touches[0].clientX, y: touches[0].clientY };
             }
             return {
@@ -547,58 +576,61 @@ document.addEventListener("DOMContentLoaded", () => {
 
         svg.addEventListener('touchstart', e => {
             e.preventDefault();
+            console.log('Touch start:', { touches: e.touches.length });
             if (e.touches.length === 1) {
                 isPanning = true;
+                isPinching = false;
                 startPoint = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                console.log('Panning started:', startPoint);
             } else if (e.touches.length === 2) {
                 isPanning = false;
                 isPinching = true;
                 initialDistance = getTouchDistance(e.touches);
-                initialViewBox = { ...svg._viewBox };
+                console.log('Pinching started:', { initialDistance });
             }
-        });
+        }, { passive: false });
 
         svg.addEventListener('touchmove', e => {
             e.preventDefault();
             if (isPanning && e.touches.length === 1) {
-                const dx = (e.touches[0].clientX - startPoint.x) * (svg._viewBox.w / svg.clientWidth);
-                const dy = (e.touches[0].clientY - startPoint.y) * (svg._viewBox.h / svg.clientHeight);
+                const touch = e.touches[0];
+                const dx = (touch.clientX - startPoint.x) * (svg._viewBox.w / svg.clientWidth);
+                const dy = (touch.clientY - startPoint.y) * (svg._viewBox.h / svg.clientHeight);
+                console.log('Touch move (pan):', { dx, dy, clientX: touch.clientX, clientY: touch.clientY });
 
                 svg._viewBox.x -= dx;
                 svg._viewBox.y -= dy;
-
-                svg.setAttribute("viewBox", 
-                    `${svg._viewBox.x} ${svg._viewBox.y} ${svg._viewBox.w} ${svg._viewBox.h}`
-                );
-
-                startPoint = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                svg.setAttribute("viewBox", `${svg._viewBox.x} ${svg._viewBox.y} ${svg._viewBox.w} ${svg._viewBox.h}`);
+                startPoint = { x: touch.clientX, y: touch.clientY };
             } else if (isPinching && e.touches.length === 2) {
                 const currentDistance = getTouchDistance(e.touches);
-                if (initialDistance === 0) return;
-
+                if (initialDistance === 0) {
+                    console.error('Touch move (pinch): initialDistance is 0');
+                    return;
+                }
                 const scaleFactor = initialDistance / currentDistance;
                 const center = getTouchCenter(e.touches);
-
+                console.log('Touch move (pinch):', { scaleFactor, center, currentDistance });
                 handleZoom(svg, scaleFactor, center.x, center.y);
                 initialDistance = currentDistance;
             }
-        });
+        }, { passive: false });
 
         svg.addEventListener('touchend', e => {
             e.preventDefault();
             isPanning = false;
             isPinching = false;
             initialDistance = 0;
-            initialViewBox = null;
-        });
+            console.log('Touch end');
+        }, { passive: false });
 
         svg.addEventListener('touchcancel', e => {
             e.preventDefault();
             isPanning = false;
             isPinching = false;
             initialDistance = 0;
-            initialViewBox = null;
-        });
+            console.log('Touch cancel');
+        }, { passive: false });
     }
 
     function updateSelects(searchQuery = '') {
