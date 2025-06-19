@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Многоэтажный граф</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="graph-area">
+            <div id="svgContainer"></div>
+        </div>
+        <div class="controls">
+            <h1>Навигация по этажам</h1>
+            <div id="floorButtons"></div>
+            <label for="searchNode">Поиск аудитории: 
+                <input type="text" id="searchNode" class="custom-search-input" placeholder="Введите название аудитории">
+            </label>
+            <label for="endNode">Выберите аудиторию: 
+                <select id="endNode" class="custom-select"></select>
+            </label>
+            <div>
+                <button id="find-btn" class="action-btn">Найти путь</button>
+                <button id="resetBtn" class="action-btn">Сбросить</button>
+            </div>
+            <div class="zoom-controls">
+                <button id="zoomInBtn" class="zoom-btn">+</button>
+                <button id="zoomOutBtn" class="zoom-btn">-</button>
+            </div>
+            <div class="info">
+                <p>Информация:</p>
+                <p>Текущий этаж: <span id="currentFloor">-</span></p>
+                <p>Выбранная вершина: <span id="selectedNode"></span></p>
+                <p>Найденный путь: <span id="pathResult"></span></p>
+                <p>Использованные лестницы: <span id="stairsUsed"></span></p>
+                <p>Следующий шаг: <span id="nextFloor"></span></p>
+                <p id="errorMsg" class=""></p>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

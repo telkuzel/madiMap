@@ -1,0 +1,207 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
+body, html {
+    font-family: 'Roboto', Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cff2 100%);
+    color: #333;
+    overflow: auto;
+}
+
+.container {
+    display: flex;
+    flex: 1;
+    height: calc(100vh - 20px);
+}
+
+.graph-area {
+    flex: 2;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.controls-btn {
+    flex: 0;
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(90deg, rgba(0,59,111,1) 0%, rgba(0,102,209,1) 100%);
+    color: #fff;
+    overflow-y: auto;
+}
+
+.controls-btn h1 {
+    font-size: 24px;
+    margin: 0 0 10px;
+}
+
+#svgContainer {
+    flex: 1;
+    width: 100%;
+    border: 2px solid #dfe3;
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+}
+
+svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.custom-search-input {
+    display: block;
+    width: 60%;
+    max-width: 400px;
+    margin: 10px auto;
+    padding: 10px;
+    font-size: 16px;
+    border: none;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #003b6f;
+    outline: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.custom-search-input:focus {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.custom-select {
+    display: block;
+    width: 60%;
+    max-width: 400px;
+    margin: 10px auto;
+    padding: 10px;
+    font-size: 16px;
+    border: none;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #003b6f;
+    outline: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+button {
+    padding: 10px 15px;
+    margin: 5px;
+    border: none;
+    cursor: pointer;
+}
+
+.floor-btn {
+    background-color: #006384;
+    color: white;
+}
+
+.floor-btn:hover {
+    background-color: #008cba;
+}
+
+.floor-btn.current-floor {
+    background-color: #4CAF50;
+    font-weight: bold;
+}
+
+.floor-btn.highlight {
+    background-color: #FF9800;
+    font-weight: bold;
+}
+
+.action-btn {
+    background: linear-gradient(90deg, rgba(0,112,209,1) 0%, rgba(0,59,111,1));
+    color: white;
+    border-radius: 20px;
+    font-size: 16px;
+}
+
+.node {
+    fill: #4415bd;
+    stroke: #333;
+    stroke-width: 2;
+    cursor: pointer;
+}
+
+.edge {
+    stroke: #333333;
+    stroke-width: 2;
+}
+
+.path {
+    stroke: #ce1414;
+    stroke-width: 5;
+    stroke-dasharray: 5;
+}
+
+.wall {
+    stroke: #1b03ba;
+    stroke-width: 2;
+}
+
+.stair {
+    fill: #FF9800;
+}
+
+.info {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 5px;
+}
+
+.error {
+    color: red;
+}
+
+text {
+    font-size: 12px;
+    fill: #000000;
+    stroke: #ffffff;
+    stroke-width: 0.5;
+    paint-order: stroke;
+    pointer-events: none;
+}
+
+.controls label span {
+    font-weight: bold;
+    color: #FF0000;
+}
+
+.zoom-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 5px;
+}
+
+.zoom-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(90deg, rgba(0,112,209,1) 0%, rgba(0,59,111,1));
+    color: white;
+    font-size: 24px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.zoom-btn:hover {
+    background: linear-gradient(90deg, rgba(0,59,111,1) 0%, rgba(0,112,209,1));
+}
+
+.controls{
+    min-width: 450px;
+}
