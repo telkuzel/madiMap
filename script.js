@@ -482,12 +482,16 @@ document.addEventListener("DOMContentLoaded", () => {
             originalHeight: viewBox[3]
         };
 
-        const minZoom = 0.3;
-        const maxZoom = 8.0;
+        const MIN_ZOOM = 0.3;
+        const MAX_ZOOM = 8.0;
 
         let isPanning = false;
         let startPoint = { x: 0, y: 0 };
+        let isPinching = false;
+        let initialDistance = 0;
+        let initialViewBox = null;
 
+        // Mouse events
         svg.addEventListener('wheel', e => {
             e.preventDefault();
             const scaleFactor = e.deltaY < 0 ? 0.95 : 1.05;
@@ -498,12 +502,14 @@ document.addEventListener("DOMContentLoaded", () => {
         zoomOutBtn.addEventListener("click", () => handleZoom(svg, 1.05, svg.getBoundingClientRect().left + svg.getBoundingClientRect().width / 2, svg.getBoundingClientRect().top + svg.getBoundingClientRect().height / 2));
 
         svg.addEventListener('mousedown', e => {
+            e.preventDefault();
             isPanning = true;
             startPoint = { x: e.clientX, y: e.clientY };
         });
 
         svg.addEventListener('mousemove', e => {
             if (!isPanning) return;
+            e.preventDefault();
             
             const dx = (e.clientX - startPoint.x) * (svg._viewBox.w / svg.clientWidth);
             const dy = (e.clientY - startPoint.y) * (svg._viewBox.h / svg.clientHeight);
@@ -520,6 +526,79 @@ document.addEventListener("DOMContentLoaded", () => {
 
         svg.addEventListener('mouseup', () => isPanning = false);
         svg.addEventListener('mouseleave', () => isPanning = false);
+
+        // Touch events
+        function getTouchDistance(touches) {
+            if (touches.length < 2) return 0;
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.hypot(dx, dy);
+        }
+
+        function getTouchCenter(touches) {
+            if (touches.length < 2) {
+                return { x: touches[0].clientX, y: touches[0].clientY };
+            }
+            return {
+                x: (touches[0].clientX + touches[1].clientX) / 2,
+                y: (touches[0].clientY + touches[1].clientY) / 2
+            };
+        }
+
+        svg.addEventListener('touchstart', e => {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                isPanning = true;
+                startPoint = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            } else if (e.touches.length === 2) {
+                isPanning = false;
+                isPinching = true;
+                initialDistance = getTouchDistance(e.touches);
+                initialViewBox = { ...svg._viewBox };
+            }
+        });
+
+        svg.addEventListener('touchmove', e => {
+            e.preventDefault();
+            if (isPanning && e.touches.length === 1) {
+                const dx = (e.touches[0].clientX - startPoint.x) * (svg._viewBox.w / svg.clientWidth);
+                const dy = (e.touches[0].clientY - startPoint.y) * (svg._viewBox.h / svg.clientHeight);
+
+                svg._viewBox.x -= dx;
+                svg._viewBox.y -= dy;
+
+                svg.setAttribute("viewBox", 
+                    `${svg._viewBox.x} ${svg._viewBox.y} ${svg._viewBox.w} ${svg._viewBox.h}`
+                );
+
+                startPoint = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            } else if (isPinching && e.touches.length === 2) {
+                const currentDistance = getTouchDistance(e.touches);
+                if (initialDistance === 0) return;
+
+                const scaleFactor = initialDistance / currentDistance;
+                const center = getTouchCenter(e.touches);
+
+                handleZoom(svg, scaleFactor, center.x, center.y);
+                initialDistance = currentDistance;
+            }
+        });
+
+        svg.addEventListener('touchend', e => {
+            e.preventDefault();
+            isPanning = false;
+            isPinching = false;
+            initialDistance = 0;
+            initialViewBox = null;
+        });
+
+        svg.addEventListener('touchcancel', e => {
+            e.preventDefault();
+            isPanning = false;
+            isPinching = false;
+            initialDistance = 0;
+            initialViewBox = null;
+        });
     }
 
     function updateSelects(searchQuery = '') {
