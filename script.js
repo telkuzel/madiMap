@@ -35,9 +35,8 @@ class MultiFloorGraph {
         const points = new Map();
         const walls = [];
 
+        // Process <line> elements
         const lines = Array.from(svg.querySelectorAll("line"));
-        const texts = Array.from(svg.querySelectorAll("text"));
-
         lines.forEach(line => {
             const x1 = parseFloat(line.getAttribute("x1")) || 0;
             const y1 = parseFloat(line.getAttribute("y1")) || 0;
@@ -46,7 +45,7 @@ class MultiFloorGraph {
             const stroke = line.getAttribute("stroke")?.toLowerCase();
 
             if (stroke === "red" || stroke === "#ff0000") {
-                walls.push({ x1, y1, x2, y2 });
+                walls.push({ type: 'line', x1, y1, x2, y2 });
             } else {
                 this.registerPoint(points, graph, x1, y1);
                 this.registerPoint(points, graph, x2, y2);
@@ -57,6 +56,19 @@ class MultiFloorGraph {
             }
         });
 
+        // Process <path> elements
+        const paths = Array.from(svg.querySelectorAll("path"));
+        paths.forEach(path => {
+            const stroke = path.getAttribute("stroke")?.toLowerCase();
+            if (stroke === "red" || stroke === "#ff0000") {
+                const d = path.getAttribute("d") || "";
+                if (d.trim()) {
+                    walls.push({ type: 'wall-path', d });
+                }
+            }
+        });
+
+        const texts = Array.from(svg.querySelectorAll("text"));
         texts.forEach(text => {
             const fill = text.getAttribute("fill")?.toLowerCase();
             if (fill === "#ff0000" || fill === "red") return;
@@ -253,65 +265,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const searchInput = document.getElementById("searchNode");
     const findBtn = document.getElementById("find-btn");
     const resetBtn = document.getElementById("resetBtn");
-    const currentFloorSpan = document.getElementById("currentFloor");
-    const selectedNodeSpan = document.getElementById("selectedNode");
-    const pathRes = document.getElementById("pathResult");
-    const stairsUsed = document.getElementById("stairsUsed");
-    const nextFloorSpan = document.getElementById("nextFloor");
-    //const errorMsg = document.getElementById("errorMsg");
-    
     const zoomInBtn = document.getElementById("zoomInBtn");
     const zoomOutBtn = document.getElementById("zoomOutBtn");
 
     let allNodes = [];
-
-    // Zoom handling function
-    function handleZoom(svg, scaleFactor, clientX, clientY) {
-        if (!svg || !svg._viewBox) {
-            console.error('handleZoom: svg or svg._viewBox is not initialized');
-            return;
-        }
-
-        const MIN_ZOOM = 0.3;
-        const MAX_ZOOM = 4;
-
-        const rect = svg.getBoundingClientRect();
-        const mouseX = clientX - rect.left;
-        const mouseY = clientY - rect.top;
-
-        const { x: vx, y: vy, w: vw, h: vh, originalWidth } = svg._viewBox;
-
-        const newWidth = vw * scaleFactor;
-        if (newWidth < originalWidth * MIN_ZOOM || newWidth > originalWidth * MAX_ZOOM) {
-            console.log(`Zoom rejected: newWidth=${newWidth}, min=${originalWidth * MIN_ZOOM}, max=${originalWidth * MAX_ZOOM}`);
-            return;
-        }
-
-        const viewBoxX = mouseX * vw / rect.width + vx;
-        const viewBoxY = mouseY * vh / rect.height + vy;
-
-        const newViewBoxWidth = newWidth;
-        const newViewBoxHeight = newWidth * (svg._viewBox.originalHeight / svg._viewBox.originalWidth);
-        const dx = (viewBoxX - vx) * (1 - scaleFactor);
-        const dy = (viewBoxY - vy) * (1 - scaleFactor);
-
-        svg._viewBox.x += dx;
-        svg._viewBox.y += dy;
-        svg._viewBox.w = newViewBoxWidth;
-        svg._viewBox.h = newViewBoxHeight;
-
-        // Ограничение перемещения после зума
-        if (svg._bounds) {
-            const { minX, maxX, minY, maxY } = svg._bounds;
-            svg._viewBox.x = Math.max(minX, Math.min(maxX - svg._viewBox.w, svg._viewBox.x));
-            svg._viewBox.y = Math.max(minY, Math.min(maxY - svg._viewBox.h, svg._viewBox.y));
-            console.log(`Zoom bounds applied: x=${svg._viewBox.x}, y=${svg._viewBox.y}, w=${svg._viewBox.w}, h=${svg._viewBox.h}`);
-        }
-
-        svg.setAttribute("viewBox", `${svg._viewBox.x} ${svg._viewBox.y} ${svg._viewBox.w} ${svg._viewBox.h}`);
-        console.log(`Zoom applied: scaleFactor=${scaleFactor}, viewBox=${svg.getAttribute("viewBox")}`);
-    }
-
     let currentFloorId = null;
     let lastPathResult = null;
 
@@ -336,11 +293,7 @@ document.addEventListener("DOMContentLoaded", () => {
         centerSVG(svg);
         enablePanAndZoom(svg);
         currentFloorId = floorId;
-        //currentFloorSpan.textContent = floorId;
-        //selectedNodeSpan.textContent = '';
-        //nextFloorSpan.textContent = '';
 
-        // Подсветка текущего этажа зеленым
         document.querySelectorAll('.floor-btn').forEach(btn => {
             btn.classList.remove('current-floor', 'highlight');
             if (btn.textContent === floorId) {
@@ -357,14 +310,26 @@ document.addEventListener("DOMContentLoaded", () => {
     function visualizeGraph(svg, graph, walls) {
         svg.querySelectorAll('.node-vis, .edge-vis, .wall-vis').forEach(el => el.remove());
 
+        // Render walls
         walls.forEach(wall => {
-            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            line.setAttribute("x1", wall.x1);
-            line.setAttribute("y1", wall.y1);
-            line.setAttribute("x2", wall.x2);
-            line.setAttribute("y2", wall.y2);
-            line.setAttribute("class", "wall wall-vis");
-            svg.appendChild(line);
+            if (wall.type === 'line') {
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", wall.x1);
+                line.setAttribute("y1", wall.y1);
+                line.setAttribute("x2", wall.x2);
+                line.setAttribute("y2", wall.y2);
+                line.setAttribute("class", "wall wall-vis");
+                line.removeAttribute("stroke"); // Remove inline stroke to rely on CSS
+                line.removeAttribute("stroke-width"); // Remove inline stroke-width
+                svg.appendChild(line);
+            } else if (wall.type === 'wall-path') {
+                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                path.setAttribute("d", wall.d);
+                path.setAttribute("class", "wall wall-vis");
+                path.removeAttribute("stroke"); // Remove inline stroke to rely on CSS
+                path.removeAttribute("stroke-width"); // Remove inline stroke-width
+                svg.appendChild(path);
+            }
         });
 
         graph.edges.forEach(({ source, target }) => {
@@ -391,9 +356,6 @@ document.addEventListener("DOMContentLoaded", () => {
             circle.setAttribute("stroke-width", "2");
             circle.setAttribute("class", `node ${node.name?.startsWith('L') ? 'stair' : ''} node-vis`);
             circle.setAttribute("data-node-id", node.id);
-            circle.addEventListener("click", () => {
-                selectedNodeSpan.textContent = node.name || node.id;
-            });
             svg.appendChild(circle);
         });
     }
@@ -403,6 +365,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
         const lines = svg.querySelectorAll('line');
+        const paths = svg.querySelectorAll('path');
         const circles = svg.querySelectorAll('circle');
 
         lines.forEach(line => {
@@ -414,6 +377,20 @@ document.addEventListener("DOMContentLoaded", () => {
             minY = Math.min(minY, y1, y2);
             maxX = Math.max(maxX, x1, x2);
             maxY = Math.max(maxY, y1, y2);
+        });
+
+        paths.forEach(path => {
+            const d = path.getAttribute('d') || "";
+            const commands = d.split(/(?=[ML])/);
+            commands.forEach(command => {
+                const coords = command.slice(1).trim().split(/[\s,]+/).map(parseFloat).filter(n => !isNaN(n));
+                if (coords.length >= 2) {
+                    minX = Math.min(minX, coords[0]);
+                    minY = Math.min(minY, coords[1]);
+                    maxX = Math.max(maxX, coords[0]);
+                    maxY = Math.max(maxY, coords[1]);
+                }
+            });
         });
 
         circles.forEach(circle => {
@@ -442,8 +419,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const newViewBox = `${x - padding} ${y - padding} ${width + 2 * padding} ${height + 2 * padding}`;
         svg.setAttribute('viewBox', newViewBox);
 
-        // Сохраняем границы контента для ограничения перемещения
-        const margin = Math.max(width, height) * 0.2; // Допуск 20% от размера графа
+        const margin = Math.max(width, height) * 0.2;
         svg._bounds = {
             minX: minX - margin,
             maxX: maxX + margin,
@@ -526,7 +502,48 @@ document.addEventListener("DOMContentLoaded", () => {
         let isPinching = false;
         let initialDistance = 0;
 
-        // Mouse events
+        function handleZoom(svg, scaleFactor, clientX, clientY) {
+            if (!svg || !svg._viewBox) {
+                console.error('handleZoom: svg or svg._viewBox is not initialized');
+                return;
+            }
+
+            const rect = svg.getBoundingClientRect();
+            const mouseX = clientX - rect.left;
+            const mouseY = clientY - rect.top;
+
+            const { x: vx, y: vy, w: vw, h: vh, originalWidth } = svg._viewBox;
+
+            const newWidth = vw * scaleFactor;
+            if (newWidth < originalWidth * MIN_ZOOM || newWidth > originalWidth * MAX_ZOOM) {
+                console.log(`Zoom rejected: newWidth=${newWidth}, min=${originalWidth * MIN_ZOOM}, max=${originalWidth * MAX_ZOOM}`);
+                return;
+            }
+
+            const viewBoxX = mouseX * vw / rect.width + vx;
+            const viewBoxY = mouseY * vh / rect.height + vy;
+
+            const newViewBoxWidth = newWidth;
+            const newViewBoxHeight = newWidth * (svg._viewBox.originalHeight / svg._viewBox.originalWidth);
+            const dx = (viewBoxX - vx) * (1 - scaleFactor);
+            const dy = (viewBoxY - vy) * (1 - scaleFactor);
+
+            svg._viewBox.x += dx;
+            svg._viewBox.y += dy;
+            svg._viewBox.w = newViewBoxWidth;
+            svg._viewBox.h = newViewBoxHeight;
+
+            if (svg._bounds) {
+                const { minX, maxX, minY, maxY } = svg._bounds;
+                svg._viewBox.x = Math.max(minX, Math.min(maxX - svg._viewBox.w, svg._viewBox.x));
+                svg._viewBox.y = Math.max(minY, Math.min(maxY - svg._viewBox.h, svg._viewBox.y));
+                console.log(`Zoom bounds applied: x=${svg._viewBox.x}, y=${svg._viewBox.y}, w=${svg._viewBox.w}, h=${svg._viewBox.h}`);
+            }
+
+            svg.setAttribute("viewBox", `${svg._viewBox.x} ${svg._viewBox.y} ${svg._viewBox.w} ${svg._viewBox.h}`);
+            console.log(`Zoom applied: scaleFactor=${scaleFactor}, viewBox=${svg.getAttribute("viewBox")}`);
+        }
+
         svg.addEventListener('wheel', e => {
             e.preventDefault();
             const scaleFactor = e.deltaY < 0 ? 0.95 : 1.05;
@@ -561,7 +578,6 @@ document.addEventListener("DOMContentLoaded", () => {
             let newX = svg._viewBox.x - dx;
             let newY = svg._viewBox.y - dy;
 
-            // Ограничение перемещения
             if (svg._bounds) {
                 const { minX, maxX, minY, maxY } = svg._bounds;
                 newX = Math.max(minX, Math.min(maxX - svg._viewBox.w, newX));
@@ -586,7 +602,6 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log('Mouse leave');
         });
 
-        // Touch events
         function getTouchDistance(touches) {
             if (touches.length < 2) return 0;
             const dx = touches[0].clientX - touches[1].clientX;
@@ -631,7 +646,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 let newX = svg._viewBox.x - dx;
                 let newY = svg._viewBox.y - dy;
 
-                // Ограничение перемещения
                 if (svg._bounds) {
                     const { minX, maxX, minY, maxY } = svg._bounds;
                     newX = Math.max(minX, Math.min(maxX - svg._viewBox.w, newX));
@@ -716,7 +730,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         floorButtons.innerHTML = '';
         multiGraph.floors.clear();
-        //errorMsg.textContent = '';
 
         try {
             for (const [index, file] of svgFiles.entries()) {
@@ -750,13 +763,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 updateSelects();
             }
         } catch (e) {
-            //errorMsg.textContent = e.message;
             console.error(e);
         }
     }
 
     function updateNextFloorMessage(floorId, path) {
-        //nextFloorSpan.textContent = '';
         document.querySelectorAll('.floor-btn').forEach(btn => {
             btn.classList.remove('highlight');
             if (btn.textContent === floorId) {
@@ -767,7 +778,6 @@ document.addEventListener("DOMContentLoaded", () => {
         for (let i = 0; i < path.length - 1; i++) {
             if (path[i].floor === floorId && path[i].floor !== path[i + 1].floor) {
                 const nextFloor = path[i + 1].floor;
-                //nextFloorSpan.textContent = `Продолжите путь на ${nextFloor}`;
                 const nextFloorBtn = Array.from(document.querySelectorAll('.floor-btn')).find(
                     btn => btn.textContent === nextFloor
                 );
@@ -788,21 +798,17 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     findBtn.addEventListener("click", () => {
-        //errorMsg.textContent = '';
-        //pathRes.textContent = '';
-        //stairsUsed.textContent = '';
-        //nextFloorSpan.textContent = '';
         document.querySelectorAll('.floor-btn').forEach(btn => btn.classList.remove('highlight'));
 
         const startNode = multiGraph.getStartNode();
         if (!startNode) {
-            //errorMsg.textContent = "Узел с именем '0' не найден";
+            console.error("Узел с именем '0' не найден");
             return;
         }
 
         const endValue = endSel.value.split('|');
         if (endValue.length !== 2 || endSel.value === '') {
-            //errorMsg.textContent = 'Выберите аудиторию из списка';
+            console.error('Выберите аудиторию из списка');
             return;
         }
 
@@ -814,45 +820,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (result) {
                 lastPathResult = result;
-                const pathDisplay = [];
-                for (let i = 0; i < result.path.length; i++) {
-                    const { floor, node } = result.path[i];
-                    const floorData = multiGraph.floors.get(floor);
-                    if (!floorData) {
-                        throw new Error(`Этаж ${floor} не найден`);
-                    }
-                    const nodeData = floorData.graph.nodes.get(node);
-                    if (!nodeData) {
-                        throw new Error(`Узел ${node} не найден на этаже ${floor}`);
-                    }
-                    pathDisplay.push(nodeData.name || node);
-                    if (i < result.path.length - 1 && result.path[i].floor !== result.path[i + 1].floor) {
-                        pathDisplay.push(`→ переход →`);
-                    }
-                }
-
-                //pathRes.textContent = pathDisplay.join(' ');
-                //stairsUsed.textContent = [...new Set(result.stairs)].join(', ');
-
                 showFloor(startFloor);
                 const svg = svgContainer.querySelector("svg");
                 visualizePath(svg, result.path, startFloor, 500);
                 updateNextFloorMessage(startFloor, result.path);
             } else {
-                //errorMsg.textContent = "Путь не найден";
+                console.error("Путь не найден");
             }
         } catch (e) {
-            //errorMsg.textContent = e.message;
             console.error(e);
         }
     });
 
     resetBtn.addEventListener("click", () => {
-        //errorMsg.textContent = '';
-        //pathRes.textContent = '';
-        //stairsUsed.textContent = '';
-        //nextFloorSpan.textContent = '';
-        //selectedNodeSpan.textContent = '';
         searchInput.value = '';
         updateSelects();
         lastPathResult = null;
